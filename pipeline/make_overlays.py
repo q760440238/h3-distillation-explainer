@@ -164,8 +164,9 @@ def render(idx, total, title, bullets, paragraph, progress=0.0):
     # card grows with its content instead of using a fixed height
     title_h = title_size + 26
     body_h = sum(len(ls) * 50 + 18 for ls in bullet_lines) + 34
-    content_h = 62 + title_h + body_h
-    card_y1 = max(520, min(940, card_y0 + content_h))
+    tabs_h = 78 if idx in (4, 5, 6) else 0
+    content_h = 62 + title_h + body_h + tabs_h
+    card_y1 = max(520, min(960, card_y0 + content_h))
 
     rounded(d, (card_x0, card_y0, card_x1, card_y1), 22,
             (10, 20, 38, 192), colour + (150,), 2)
@@ -189,6 +190,23 @@ def render(idx, total, title, bullets, paragraph, progress=0.0):
             d.text((card_x0 + pad_x + 44, y), line, font=bf, fill=TEXT)
             y += 50
         y += 18
+
+    # --- method tabs on the three "how" slides ---
+    if idx in (4, 5, 6):
+        y += 6
+        d.rectangle([card_x0 + pad_x, y - 4, card_x1 - pad_x, y - 2], fill=(255, 255, 255, 26))
+        tab_f = font(FONT_R, 24)
+        labels = ['① Logit', '② 特征', '③ On-Policy']
+        x = card_x0 + pad_x
+        for k, name in enumerate(labels):
+            tw = d.textlength(name, font=tab_f) + 30
+            active = (k == idx - 4)
+            rounded(d, (x, y + 14, x + tw, y + 58), 12,
+                    colour + ((70,) if active else (18,)),
+                    colour + ((210,) if active else (60,)), 1)
+            d.text((x + 15, y + 24), name, font=tab_f,
+                   fill=(colour + (255,)) if active else (120, 138, 168, 200))
+            x += tw + 12
 
     # --- top-right label ---
     label = '蒸馏 · DISTILLATION'

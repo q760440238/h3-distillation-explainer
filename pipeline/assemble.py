@@ -40,7 +40,7 @@ def run(args):
     return True
 
 
-def encode(seg, clip, overlay, dur, audio, punch=False):
+def encode(seg, clip, overlay, dur, punch=False):
     zoom = PUNCH if punch else 1.0
     tw, th = int(W * zoom), int(H * zoom)
     vf = (
@@ -50,18 +50,13 @@ def encode(seg, clip, overlay, dur, audio, punch=False):
         f'[bg][1:v]overlay=0:0[v]'
     )
     cmd = [FF, '-y', '-stream_loop', '-1', '-i', clip,
-           '-loop', '1', '-i', overlay]
-    if audio:
-        cmd += ['-i', audio]
-    else:
-        cmd += ['-f', 'lavfi', '-t', f'{dur:.3f}', '-i', 'anullsrc=r=44100:cl=mono']
-    cmd += ['-filter_complex', vf,
-            '-map', '[v]', '-map', '2:a',
-            '-t', f'{dur:.3f}',
-            '-c:v', 'libx264', '-preset', 'medium', '-crf', '19',
-            '-pix_fmt', 'yuv420p', '-r', '24',
-            '-c:a', 'aac', '-b:a', '160k', '-ar', '44100',
-            seg]
+           '-loop', '1', '-i', overlay,
+           '-filter_complex', vf,
+           '-map', '[v]',
+           '-t', f'{dur:.3f}', '-an',
+           '-c:v', 'libx264', '-preset', 'medium', '-crf', '19',
+           '-pix_fmt', 'yuv420p', '-r', '24',
+           seg]
     return run(cmd)
 
 
@@ -107,7 +102,7 @@ def main():
         if not (os.path.exists(overlay) and os.path.exists(wav)):
             print(f'  seg{idx:02d} missing inputs')
             continue
-        ok = encode(seg, clip, overlay, item['seconds'], wav, punch=(i % 2 == 1))
+        ok = encode(seg, clip, overlay, item['seconds'], punch=(i % 2 == 1))
         print(f'  seg{idx:02d} {item["seconds"]:5.1f}s {os.path.basename(clip)}'
               f'{" [punch]" if i % 2 else ""} -> {"ok" if ok else "FAIL"}')
         if ok:
@@ -116,7 +111,7 @@ def main():
     # --- outro card ---
     if os.path.exists(os.path.join(CARDS, 'outro.png')):
         seg = os.path.join(SEGS, 'seg99.mp4')
-        if encode(seg, pick('g4', clips[0]), os.path.join(CARDS, 'outro.png'), OUTRO_SECONDS, None):
+        if encode(seg, pick('g4', clips[0]), os.path.join(CARDS, 'outro.png'), OUTRO_SECONDS):
             seg_paths.append(seg)
             print(f'  outro  {OUTRO_SECONDS:4.1f}s')
 
@@ -129,9 +124,26 @@ def main():
         for p in seg_paths:
             fh.write(f"file '{p.replace(chr(92), '/')}'\n")
 
-    final = os.path.join(OUT, 'distillation_explainer.mp4')
+    silent = os.path.join(OUT, '_video_silent.mp4')
     ok = run([FF, '-y', '-f', 'concat', '-safe', '0', '-i', list_path,
-              '-c', 'copy', final])
+              '-c', 'copy', silent])
+    if not ok:
+        sys.exit(1)
+
+    final = os.path.join(OUT, 'distillation_explainer.mp4')
+    audio_path = os.path.join(OUT, 'audio_final.wav')
+    if os.path.exists(audio_path):
+        ok = run([FF, '-y', '-i', silent, '-i', audio_path,
+                  '-map', '0:v:0', '-map', '1:a:0',
+                  '-c:v', 'copy', '-c:a', 'aac', '-b:a', '160k',
+                  '-shortest', '-movflags', '+faststart', final])
+        if ok and os.path.exists(silent):
+            os.remove(silent)
+    else:
+        print('WARNING: audio_final.wav missing, output has no sound')
+        os.replace(silent, final)
+        ok = True
+
     print('FINAL:', final if ok else 'FAILED')
     if ok and os.path.exists(final):
         print(f'  {os.path.getsize(final)/1e6:.1f} MB')
