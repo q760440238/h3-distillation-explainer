@@ -18,12 +18,13 @@ OUT = r'E:\minimaxh3\out'
 TT = os.path.join(OUT, 'tts')
 OV = os.path.join(OUT, 'overlays')
 CARDS = os.path.join(OUT, 'cards')
-CLIPS = os.path.join(OUT, 'clips')
+CLIPS = os.environ.get('CLIPS_DIR') or os.path.join(OUT, 'clips')
 SEGS = os.path.join(OUT, 'segments')
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 
 W, H = 1920, 1080
 SLOW = 3.0
+SHARPEN = 0.55        # luma unsharp amount, measured best without artefacts
 PUNCH = 1.10          # extra zoom on every other shot
 INTRO_SECONDS = 2.4
 OUTRO_SECONDS = 3.2
@@ -46,7 +47,8 @@ def encode(seg, clip, overlay, dur, punch=False):
     vf = (
         f'[0:v]setpts=PTS*{SLOW},'
         f'scale={tw}:{th}:force_original_aspect_ratio=increase:flags=lanczos,'
-        f'crop={W}:{H}[bg];'
+        f'crop={W}:{H},'
+        f'unsharp=5:5:{SHARPEN}:5:5:0[bg];'
         f'[bg][1:v]overlay=0:0[v]'
     )
     cmd = [FF, '-y', '-stream_loop', '-1', '-i', clip,

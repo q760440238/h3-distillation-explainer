@@ -201,11 +201,14 @@ def render(idx, total, title, bullets, paragraph, progress=0.0):
         for k, name in enumerate(labels):
             tw = d.textlength(name, font=tab_f) + 30
             active = (k == idx - 4)
-            rounded(d, (x, y + 14, x + tw, y + 58), 12,
-                    colour + ((70,) if active else (18,)),
-                    colour + ((210,) if active else (60,)), 1)
-            d.text((x + 15, y + 24), name, font=tab_f,
-                   fill=(colour + (255,)) if active else (120, 138, 168, 200))
+            if active:
+                rounded(d, (x, y + 14, x + tw, y + 58), 12,
+                        (8, 16, 30, 235), colour + (235,), 2)
+                d.text((x + 15, y + 24), name, font=tab_f, fill=(255, 255, 255, 250))
+            else:
+                rounded(d, (x, y + 14, x + tw, y + 58), 12,
+                        (255, 255, 255, 12), (120, 138, 168, 110), 1)
+                d.text((x + 15, y + 24), name, font=tab_f, fill=(150, 168, 196, 220))
             x += tw + 12
 
     # --- top-right label ---
