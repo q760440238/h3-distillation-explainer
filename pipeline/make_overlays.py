@@ -36,6 +36,20 @@ ACCENT = (96, 170, 255)
 TEXT = (232, 240, 255)
 DIM = (150, 172, 205)
 
+# paragraph index -> (section colour, section label)
+SECTIONS = {
+    1: ((110, 170, 255), '开篇'),
+    2: ((110, 170, 255), '开篇'),
+    3: ((110, 170, 255), '开篇'),
+    4: ((69, 224, 200), '三套做法'),
+    5: ((69, 224, 200), '三套做法'),
+    6: ((69, 224, 200), '三套做法'),
+    7: ((167, 139, 250), '工业实践'),
+    8: ((167, 139, 250), '工业实践'),
+    9: ((255, 184, 110), '效果与提醒'),
+    10: ((255, 184, 110), '效果与提醒'),
+}
+
 
 def font(path, size):
     return ImageFont.truetype(path, size)
@@ -122,9 +136,14 @@ def rounded(draw, box, radius, fill, outline=None, width=2):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
 
-def render(idx, total, title, bullets, paragraph):
+def render(idx, total, title, bullets, paragraph, progress=0.0):
+    colour, section = SECTIONS.get(idx, (ACCENT, ''))
     img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
+
+    # --- top progress bar ---
+    d.rectangle([0, 0, W, 6], fill=(255, 255, 255, 26))
+    d.rectangle([0, 0, int(W * progress), 6], fill=colour + (235,))
 
     card_x0, card_x1 = 80, 720
     card_y0, card_y1 = 250, 820
@@ -149,16 +168,23 @@ def render(idx, total, title, bullets, paragraph):
     card_y1 = max(520, min(940, card_y0 + content_h))
 
     rounded(d, (card_x0, card_y0, card_x1, card_y1), 22,
-            (10, 20, 38, 190), (ACCENT[0], ACCENT[1], ACCENT[2], 150), 2)
-    d.rectangle([card_x0, card_y0, card_x1, card_y0 + 6], fill=ACCENT + (230,))
+            (10, 20, 38, 192), colour + (150,), 2)
+    d.rectangle([card_x0, card_y0, card_x1, card_y0 + 6], fill=colour + (235,))
 
-    d.text((card_x0 + pad_x, card_y0 + 32), f'{idx:02d} / {total:02d}',
-           font=font(FONT_R, 30), fill=DIM)
-    d.text((card_x0 + pad_x, card_y0 + 78), title, font=tf, fill=TEXT)
+    # section chip + counter
+    chip_w = d.textlength(section, font=font(FONT_R, 26)) + 28 if section else 0
+    if section:
+        rounded(d, (card_x0 + pad_x, card_y0 + 26, card_x0 + pad_x + chip_w, card_y0 + 68),
+                14, colour + (46,), colour + (170,), 1)
+        d.text((card_x0 + pad_x + 14, card_y0 + 33), section,
+               font=font(FONT_R, 26), fill=colour + (255,))
+    d.text((card_x0 + pad_x + chip_w + 16, card_y0 + 34), f'{idx:02d} / {total:02d}',
+           font=font(FONT_R, 26), fill=DIM)
+    d.text((card_x0 + pad_x, card_y0 + 84), title, font=tf, fill=TEXT)
 
-    y = card_y0 + 78 + title_h + 18
+    y = card_y0 + 84 + title_h + 18
     for lines in bullet_lines:
-        d.ellipse([card_x0 + pad_x + 4, y + 14, card_x0 + pad_x + 22, y + 32], fill=ACCENT)
+        d.ellipse([card_x0 + pad_x + 4, y + 14, card_x0 + pad_x + 22, y + 32], fill=colour + (255,))
         for line in lines:
             d.text((card_x0 + pad_x + 44, y), line, font=bf, fill=TEXT)
             y += 50
@@ -175,7 +201,7 @@ def render(idx, total, title, bullets, paragraph):
     for i in range(band_top, H):
         alpha = int(200 * (i - band_top) / (H - band_top))
         d.line([(0, i), (W, i)], fill=(6, 10, 18, alpha))
-    d.rectangle([0, band_top, W, band_top + 3], fill=ACCENT + (200,))
+    d.rectangle([0, band_top, W, band_top + 3], fill=colour + (210,))
 
     sfont = font(FONT_R, 34)
     lines = wrap(d, paragraph, sfont, W - 200)
