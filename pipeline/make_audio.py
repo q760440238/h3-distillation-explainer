@@ -24,7 +24,7 @@ OUTRO_SECONDS = 3.2
 MUSIC_DB = -6.0          # bed level relative to the narration
 
 
-def silence(seconds, path, channels=1, rate=22050, width=2):
+def silence(seconds, path, channels=1, rate=44100, width=2):
     n = int(rate * seconds)
     with wave.open(path, 'wb') as w:
         w.setnchannels(channels)
@@ -65,7 +65,7 @@ def main():
         FF, '-y', '-i', NARR, '-i', MUSIC,
         '-filter_complex',
         f'[1:a]volume={MUSIC_DB}dB,atempo=1.0[m];'
-        f'[0:a][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,volume=-1dB[a]',
+        f'[0:a][m]amix=inputs=2:duration=first:dropout_transition=0:normalize=0,volume=-1dB,loudnorm=I=-16:TP=-1.5:LRA=11[a]',
         '-map', '[a]', '-ar', '44100', '-ac', '1',
         '-c:a', 'pcm_s16le', MIXED],
         capture_output=True, text=True, errors='replace')
